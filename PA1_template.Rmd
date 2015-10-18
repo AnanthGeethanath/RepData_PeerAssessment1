@@ -1,25 +1,198 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template.Rmd"
+author: "AG"
+date: "Sunday, October 11, 2015"
+output: html_document
 ---
+#Overview#
 
 
-## Loading and preprocessing the data
+*It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a [Fitbit](http://www.fitbit.com/), [Nike] (http://www.nike.com/)[Fuelband](http://www.fuelband.com/), or [Jawbone](http://www.jawbone.com/) Up. These type of devices are part of the "quantified self" movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.*
+
+This document tries to illustrate the average steps taken in a day , daily pattern and also tries to explore if there differences during weekdays and weekends. This is based of the the ["Activity" dataset](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip), provided as a part of Assignment 1 of Reproducibel Research course at JHU.
+
+## Let us read the dataset now ##
+I've set the working directory to the location where the activity.csv file is located. Before we read the dataset, want to load the *ggplot2* library for plotting. You can see the code below
+
+```{r echo=TRUE}
+library(ggplot2)
+library(chron)
+activitydata <-read.csv("./activity.csv", head=TRUE, sep=",")
+```
+
+
+### Let us look at the activitydata ###
+
+
+```{r, echo=TRUE}
+head(activitydata)
+sapply(activitydata, class)
+```
+
+
+## Question 1: What is mean total number of steps taken per day? ##
+
+
+Data is collected at specific intervals, everyday for 2 months. We need to sum all the steps taken per day, before we get the mean and corresponding median. 
+
+
+```{r, echo=TRUE}
+stepsbyday<-tapply(activitydata$steps, activitydata$date,sum)
+```
+
+
+Now let us plot the steps by day
+
+``` {r, echo = TRUE}
+g<-ggplot(as.data.frame(stepsbyday), aes(stepsbyday))
+g+geom_histogram(binwidth = 1000, col="green") + labs( x="Steps taken by Day", y="Number of Days", title = "Steps Per Day")
+```
+
+Also, the average number of steps across days is found to be
 
 
 
-## What is mean total number of steps taken per day?
+```{r, echo=TRUE}
+mean(stepsbyday, na.rm=TRUE)
+```
+
+
+And the median of number of steps is
+
+
+``` {r, echo=TRUE}
+median(stepsbyday, na.rm=TRUE)
+```
+
+## Question 2: What is the average daily activity pattern? ##
+
+So, we need to see how people walk around, on an average, during the day.. First, let us clean up the data a bit
+
+``` {r, echo=TRUE}
+cleandata<-subset(activitydata, !is.na(activitydata$steps))
+avgdailypattern<-tapply(cleandata$steps, cleandata$interval, mean)
+```
+
+Let us plot the time series data now
+
+```{r, echo=TRUE}
+plot(avgdailypattern, type="l", col="green")
+abline(v=which.max(avgdailypattern)[[1]], col ="red", lwd=2)
+abline(h=max(avgdailypattern), col="red", lwd=2)
+```
+Also we observe that the maximum number of steps are on the below intervals
+```{r, echo=TRUE}
+which.max(avgdailypattern)[[1]]
+```
+
+## Question 3 Imputing Missing Values ##
+
+As the first part of the question, let us look at the number of missing values in the data set
+
+``` {r, echo=FALSE}
+sapply(activitydata, function(x) sum(is.na(x)))
+````
+
+So, all we need is to compute the missing values for steps feature. Let us see how many days have NA values
+
+``` {r, echo=TRUE}
+NADays<-tapply(activitydata$steps, activitydata$date, function(x) sum(is.na(x)))
+```
+Let us see how many days have NA values
+```{r, echo=TRUE}
+length(which(NADays!=0))
+```
+
+Let us impute values into the data set, now. Will adopt a very simple technique of inserting "mean" number of steps / interval into the data set
+
+Let us massage the data set
+```{r, echo=TRUE}
+data1<-subset(activitydata, !is.na(activitydata$steps))
+data2<-subset(activitydata, is.na(activitydata$steps))
+steppat<-tapply(data1$steps, data1$interval, mean)
+data2$steps<-steppat
+data3<-rbind(data1, data2)
+stepsbyday1<- tapply(data3$steps, data3$date, sum)
+```
+
+``` {r, echo = TRUE}
+g<-ggplot(as.data.frame(stepsbyday1), aes(stepsbyday1))
+g+geom_histogram(binwidth = 1000, col="green") + labs( x="Steps taken by Day", y="Number of Days", title = "Steps Per Day")
+```
+
+Mean and Meadian values, below
+```{r, echo=TRUE}
+mean(stepsbyday1)
+median(stepsbyday1)
+```
+
+As you can see from above there is no change from imputing values in the dataframe
+
+## Question 4: Are there differences in activity patterns between weekdays and weekends? ##
+
+Let us create a factor variable to indicate weekdays vs weekends
+
+``` {r, echo=TRUE}
+activitydata$date<-as.POSIXlt(activitydata$date, format="%Y-%m-%d")
+activitydata$weekend<-is.weekend(activitydata$date)
+table(activitydata$weekend)
+```
+
+Let us plot the weekday Vs Weekend pattern
+```{r, ech=TRUE}
+activitydata<-subset(activitydata, !is.na(activitydata$steps))
+weekdaypat<-subset(activitydata, !activitydata$weekend)
+weekendpat<-subset(activitydata, activitydata$weekend)
+wkdyavg<-tapply(weekdaypat$steps, weekdaypat$interval, mean)
+wkndavg<-tapply(weekendpat$steps, weekendpat$interval, mean)
+```
+
+Let us plot the patterns
+
+``` {r, ech=TRUE}
+par(mfrow=c(2,1), mar= c(4,4,4,2))
+plot(wkdyavg, type="l", col="green", title="Weekdays")
+plot(wkndavg, type="l", col="green", title="Weekends")
 
 
 
-## What is the average daily activity pattern?
 
 
 
-## Imputing missing values
 
 
 
-## Are there differences in activity patterns between weekdays and weekends?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
